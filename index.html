@@ -252,6 +252,12 @@ p{margin:0}
 .cc-go{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--accent-ink);font-weight:700;border-radius:999px;padding:5px 12px;font-size:14px;margin-top:6px}
 .cc-lock{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;background:var(--surface2);color:var(--muted);border-radius:999px;padding:4px 10px;font-size:13px;margin-top:6px}
 .castnote{font-size:12px;margin-top:16px}
+.castcard.static{cursor:default}
+.castcard.sel{box-shadow:0 0 0 3px var(--accent),0 8px 24px rgba(36,32,31,.12)}
+.roles-cast{margin-top:18px}
+@media (min-width:861px){.roles-map .mapscroll svg{display:block;max-width:820px;margin:0 auto}}
+.roles-head .muted + .muted{margin-top:4px}
+
 .rp-bust{width:180px;margin:-4px auto 0;border-radius:14px;background:color-mix(in srgb,var(--tint) 18%,var(--surface))}
 @media (max-width:860px){.hero2-in{grid-template-columns:1fr}.hero2-copy{padding-bottom:8px}.hero2-stage{min-height:280px}}
 
@@ -1306,7 +1312,7 @@ function Bust({id,size,title}){
 /* 角色立繪（AI 生成，已去背）：full 全身、half 上半身 */
 const charImg=(id,kind)=>'chars/'+id+'-'+kind+'.webp';
 const CharPic=({id,kind,cls})=>html`<img className=${cls||''} src=${charImg(id,kind)} alt=${CAST[id].job+' '+CAST[id].name} loading="lazy" decoding="async"/>`;
-function CastGrid({pick}){
+function CastGrid({pick,sel}){
   return html`<div className="castgrid">
         ${ROLES.map((r,i)=>{ const c=CAST[r.id], q=MAPROLE[r.id].quote;
           const inner=[html`<div key="p" className="cc-pic" style=${{'--tint':roleColor(r.id)}}><${CharPic} id=${r.id} kind="half" cls="halfimg"/><span className="cc-no mono">${String(i+1).padStart(2,'0')}</span></div>`, html`<div key="b" className="cc-body">
@@ -1314,10 +1320,11 @@ function CastGrid({pick}){
               <div className="cc-name">${c.job}・${c.name}</div>
               <h3>${r.title}</h3>
               <p className="cc-quote">${q}</p>
-              ${r.open ? html`<span className="cc-go">開始上班 <${Icon} n="arrow"/></span>` : html`<span className="cc-lock"><${Icon} n="lock"/>製作中</span>`}
+              ${pick && (r.open ? html`<span className="cc-go">開始上班 <${Icon} n="arrow"/></span>` : html`<span className="cc-lock"><${Icon} n="lock"/>製作中</span>`)}
             </div>`];
+          if(!pick) return html`<div key=${r.id} className="card castcard static">${inner}</div>`;
           return r.open
-            ? html`<button key=${r.id} className="card castcard open" onClick=${()=>pick(r.id)} aria-label=${r.name+'，'+r.title+'，開始上班'}>${inner}</button>`
+            ? html`<button key=${r.id} id=${'cc-'+r.id} className=${'card castcard open'+(sel===r.id?' sel':'')} onClick=${()=>pick(r.id)} aria-label=${r.name+'，'+r.title+'，開始上班'}>${inner}</button>`
             : html`<div key=${r.id} className="card castcard locked" aria-label=${r.name+'，'+r.title+'，製作中'}>${inner}</div>`;
         })}
       </div>`;
@@ -1351,7 +1358,7 @@ function Home({go,pick}){
         <h2>選一位同事，過他的一天</h2>
         <p className="muted">每個部門都有自己的任務、突發狀況和兩通限時電話。</p>
       </div>
-      <${CastGrid} pick=${pick}/>
+      <${CastGrid}/>
       <p className="muted castnote">本遊戲人物與情境純屬虛構（但基於真實事件改編，如有雷同，那你一定也辛苦了）。製作過程中沒有任何同事受到傷害，頂多被訪問打斷了幾次。遊戲行動都只是一種選擇，結果不會寄給你的主管。</p>
     </section>
   </div>`;
@@ -1683,39 +1690,21 @@ function RoleMap({sel,onPick,flows}){
 
 function Roles({pick,back}){
   const [sel,setSel]=useState('design');
-  const [view,setView]=useState('map');
   const [flows,setFlows]=useState(true);
   const scroller=useRef(null);
-  useEffect(()=>{ const el=scroller.current; if(el && el.scrollWidth>el.clientWidth) el.scrollLeft=(el.scrollWidth-el.clientWidth)*0.45; },[view]);
-  const r=ROLES.find(x=>x.id===sel), m=MAPROLE[sel];
+  useEffect(()=>{ const el=scroller.current; if(el && el.scrollWidth>el.clientWidth) el.scrollLeft=(el.scrollWidth-el.clientWidth)*0.45; },[]);
+  const onPick = id => { setSel(id); const el=document.getElementById('cc-'+id); if(el && el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'center'}); };
   return html`<div className="wrap">
     <div className="roles-head">
-      <div><p className="kicker">選擇部門</p><h1 className="maptitle">今天，你想在哪裡上班？</h1><p className="muted">點地圖上的同事，看看他們今天遇到什麼事。</p></div>
+      <div><p className="kicker">選擇部門</p><h1 className="maptitle">今天，你想在哪裡上班？</h1><p className="muted">點地圖上的同事，看看他們今天遇到什麼事。</p>
+        <p className="muted">若是使用手機，請橫放能夠更清楚看到地圖上人員協作線。虛線是部門同事之間的工作協作關係，選一位同事，會標出他和誰有往來。</p></div>
       <div className="maptools" role="group" aria-label="地圖顯示">
-        <button className="btn small" aria-pressed=${view==='map'} onClick=${()=>setView('map')}>全景</button>
-        <button className="btn small" aria-pressed=${view==='list'} onClick=${()=>setView('list')}>清單</button>
-        ${view==='map' && html`<button className="btn small" aria-pressed=${flows} onClick=${()=>setFlows(!flows)}>協作線</button>`}
+        <button className="btn small" aria-pressed=${flows} onClick=${()=>setFlows(!flows)}>協作線</button>
         <button className="btn small" onClick=${back}>回首頁</button>
       </div>
     </div>
-    ${view==='map' ? html`<div className="mapgrid">
-      <div className="card mapcard"><div className="mapscroll" ref=${scroller}><${RoleMap} sel=${sel} onPick=${setSel} flows=${flows}/></div>
-        <p className="hint">${flows?'虛線是部門之間的工作往來。選一位同事，會標出他和誰有往來。':'點人物，或用 Tab 鍵選擇。'}</p></div>
-      <aside className="card rolepanel" aria-live="polite">
-        <div className="rp-bust" style=${{'--tint':roleColor(sel)}}><${CharPic} id=${sel} kind="half" cls="halfimg"/></div>
-        <div className="rp-top"><span className="rp-dot" style=${{background:roleColor(sel)}}></span><span>${String(ROLES.indexOf(r)+1).padStart(2,'0')} · ${r.name}</span>
-          ${r.open?html`<${Chip} st="done">可以玩</${Chip}>`:html`<${Chip} st="deferred"><${Icon} n="lock"/>尚未開放</${Chip}>`}</div>
-        <h2>${r.title}</h2>
-        <p className="rp-place">${m.place==='class'?'美數學院・教室':'中鼎大樓・辦公室'}</p>
-        <blockquote>${m.quote}</blockquote>
-        <p className="rp-flows"><b>常有工作往來：</b>${FLOWS.filter(f=>f[0]===sel||f[1]===sel).map(f=>{ const o=ROLES.find(x=>x.id===(f[0]===sel?f[1]:f[0])); return o.name+'（'+f[2]+'）'; }).join('、')}</p>
-        <p>${r.open?'':'預計內容：'}${r.teaser}</p>
-        ${r.open ? html`<button className="btn primary" onClick=${()=>pick(r.id)}>開始這一天 <${Icon} n="arrow"/></button>`
-                 : html`<button className="btn" disabled>這個部門製作中</button>`}
-        <div className="rp-list">${ROLES.map(x=>html`<button key=${x.id} className=${'rp-item'+(x.id===sel?' on':'')} aria-pressed=${x.id===sel} onClick=${()=>setSel(x.id)}>
-          <span className="rp-dot" style=${{background:roleColor(x.id)}}></span>${x.name}${x.open?html`<span className="rp-open" aria-label="可以玩">▶</span>`:''}</button>`)}</div>
-      </aside></div>`
-    : html`<${CastGrid} pick=${pick}/>`}
+    <div className="card mapcard roles-map"><div className="mapscroll" ref=${scroller}><${RoleMap} sel=${sel} onPick=${onPick} flows=${flows}/></div></div>
+    <div className="roles-cast"><${CastGrid} pick=${pick} sel=${sel}/></div>
   </div>`;
 }
 function OldRoleList({pick}){
