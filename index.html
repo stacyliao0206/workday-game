@@ -500,6 +500,25 @@ p{margin:0}
 .hopts button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
 .hopts button:disabled{opacity:.5;cursor:not-allowed}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* 背景音樂開關：右上角黑膠唱片，播放時旋轉 */
+.top{padding-right:78px}
+.vinyl{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:calc(env(safe-area-inset-right,0px) + 12px);z-index:60;width:54px;height:54px;padding:0;border:0;border-radius:50%;cursor:pointer;background:none;-webkit-tap-highlight-color:transparent}
+.vinyl .disc{position:absolute;inset:0;border-radius:50%;box-shadow:0 2px 8px rgba(36,32,31,.35);
+  background:
+    radial-gradient(circle at 34% 28%,rgba(255,255,255,.22),rgba(255,255,255,0) 38%),
+    repeating-radial-gradient(circle at 50% 50%,#1b1918 0 1.5px,#2c2928 1.5px 3px),
+    #1b1918}
+.vinyl .label{position:absolute;inset:16px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px #1b1918,inset 0 0 0 1px rgba(255,255,255,.35)}
+.vinyl .label::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:#1b1918}
+.vinyl .ico{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;font-size:13px;line-height:1;box-shadow:0 1px 3px rgba(36,32,31,.2)}
+.vinyl.off .disc{filter:grayscale(1) brightness(1.35)}
+.vinyl.off .label{background:var(--muted)}
+.vinyl:hover .disc{box-shadow:0 0 0 3px var(--accent-soft),0 2px 8px rgba(36,32,31,.35)}
+@media (prefers-reduced-motion:no-preference){.vinyl.on .disc{animation:vinylspin 4s linear infinite}}
+@keyframes vinylspin{to{transform:rotate(360deg)}}
+/* 首頁：唱片排在「前往辦公大樓」按鈕旁邊；其他畫面回到右上角 */
+@media (max-width:600px){.maptitle{padding-right:56px}}
+.vinyl.inline{position:relative;top:auto;right:auto;z-index:auto;align-self:center;flex:none;margin-left:4px}
 </style>
 
 </head>
@@ -4818,6 +4837,77 @@ function start(data){
 }
 const hot = window.claude && window.claude.hot;
 if(hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+})();
+</script>
+
+<!-- 背景音樂：預設開啟、音量 30%、循環播放。瀏覽器若擋下自動播放，會在玩家第一次點擊或按鍵時開始播。 -->
+<audio id="bgm" src="workmusic.mp3" loop preload="auto"></audio>
+<button type="button" id="vinyl" class="vinyl on" aria-pressed="true" aria-label="背景音樂：開（按一下關閉）" title="背景音樂：開">
+  <span class="disc"><span class="label"></span></span><span class="ico" aria-hidden="true">🔊</span>
+</button>
+<script>
+(function(){
+  var audio = document.getElementById('bgm');
+  var btn = document.getElementById('vinyl');
+  var ico = btn.querySelector('.ico');
+  var wantOn = true;            // 預設開
+  audio.volume = 0.3;           // 音量 30%
+
+  // 首頁有「前往辦公大樓」時，把唱片搬到它旁邊；離開首頁時搬回 body（固定在右上角）
+  var inline = false;
+  function findCta(){
+    var bs = document.querySelectorAll('.hero2-cta button');
+    for(var i=0;i<bs.length;i++){ if(bs[i] !== btn && /前往辦公大樓/.test(bs[i].textContent)) return bs[i]; }
+    return null;
+  }
+  function place(){
+    var cta = findCta();
+    if(cta){
+      if(cta.nextSibling !== btn) cta.parentNode.insertBefore(btn, cta.nextSibling);
+      if(!inline){ inline = true; render(); }
+    } else {
+      if(btn.parentNode !== document.body || inline){ document.body.appendChild(btn); inline = false; render(); }
+    }
+  }
+  new MutationObserver(place).observe(document.getElementById('root'), {childList:true, subtree:true});
+
+  function render(){
+    btn.className = 'vinyl ' + (wantOn ? 'on' : 'off') + (inline ? ' inline' : '');
+    btn.setAttribute('aria-pressed', wantOn ? 'true' : 'false');
+    btn.setAttribute('aria-label', wantOn ? '背景音樂：開（按一下關閉）' : '背景音樂：關（按一下開啟）');
+    btn.title = wantOn ? '背景音樂：開' : '背景音樂：關';
+    ico.textContent = wantOn ? '🔊' : '🔇';
+  }
+  function tryPlay(){
+    if(!wantOn || !audio.paused) return;
+    var p = audio.play();
+    if(p && p.catch) p.catch(function(){ /* 被瀏覽器擋下，等玩家第一次互動 */ });
+  }
+  // 瀏覽器常擋自動播放：玩家第一次點擊／按鍵時補播
+  var started = false;          // 是否真的播出聲音過
+  var EVENTS = ['pointerdown','keydown','touchstart'];
+  function firstTouch(){ tryPlay(); }
+  EVENTS.forEach(function(t){ document.addEventListener(t, firstTouch, true); });
+  audio.addEventListener('playing', function(){
+    if(started) return;
+    started = true;
+    EVENTS.forEach(function(t){ document.removeEventListener(t, firstTouch, true); });
+  });
+
+  btn.addEventListener('click', function(){
+    if(wantOn && !started && !audio.error){ tryPlay(); return; }   // 顯示開但還沒播出來：這次點擊是讓它開始播
+    wantOn = !wantOn;
+    if(wantOn) tryPlay(); else audio.pause();
+    render();
+  });
+  // 切到其他分頁時暫停，回來再繼續
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden) audio.pause(); else tryPlay();
+  });
+
+  render();
+  place();
+  tryPlay();
 })();
 </script>
 
