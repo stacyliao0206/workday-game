@@ -500,9 +500,11 @@ p{margin:0}
 .hopts button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
 .hopts button:disabled{opacity:.5;cursor:not-allowed}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-/* 背景音樂開關：右上角黑膠唱片，播放時旋轉 */
+/* 背景音樂開關：首頁是「咖啡＋黑膠」儀式感按鈕（在「前往辦公大樓」旁）；其他畫面縮成右上角黑膠唱片 */
 .top{padding-right:78px}
-.vinyl{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:calc(env(safe-area-inset-right,0px) + 12px);z-index:60;width:54px;height:54px;padding:0;border:0;border-radius:50%;cursor:pointer;background:none;-webkit-tap-highlight-color:transparent}
+@media (max-width:600px){.maptitle{padding-right:56px}}
+.vinyl{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:calc(env(safe-area-inset-right,0px) + 12px);z-index:60;width:54px;height:54px;padding:0;border:0;border-radius:50%;cursor:pointer;background:none;color:var(--ink);font:inherit;text-align:left;-webkit-tap-highlight-color:transparent}
+.vinyl .vy-art{position:relative;display:block;width:54px;height:54px;flex:none}
 .vinyl .disc{position:absolute;inset:0;border-radius:50%;box-shadow:0 2px 8px rgba(36,32,31,.35);
   background:
     radial-gradient(circle at 34% 28%,rgba(255,255,255,.22),rgba(255,255,255,0) 38%),
@@ -511,14 +513,31 @@ p{margin:0}
 .vinyl .label{position:absolute;inset:16px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px #1b1918,inset 0 0 0 1px rgba(255,255,255,.35)}
 .vinyl .label::after{content:"";position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:#1b1918}
 .vinyl .ico{position:absolute;right:-4px;bottom:-4px;width:24px;height:24px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;font-size:13px;line-height:1;box-shadow:0 1px 3px rgba(36,32,31,.2)}
+.vinyl .cup,.vinyl .vy-text{display:none}
 .vinyl.off .disc{filter:grayscale(1) brightness(1.35)}
 .vinyl.off .label{background:var(--muted)}
-.vinyl:hover .disc{box-shadow:0 0 0 3px var(--accent-soft),0 2px 8px rgba(36,32,31,.35)}
-@media (prefers-reduced-motion:no-preference){.vinyl.on .disc{animation:vinylspin 4s linear infinite}}
+.vinyl:not(.inline):hover .disc{box-shadow:0 0 0 3px var(--accent-soft),0 2px 8px rgba(36,32,31,.35)}
+/* 首頁版：咖啡杯＋黑膠＋兩行字 */
+.vinyl.inline{position:relative;top:auto;right:auto;z-index:auto;width:auto;height:auto;min-height:48px;display:inline-flex;align-items:center;gap:12px;padding:8px 18px 8px 12px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);box-shadow:var(--shadow);align-self:center;flex:none}
+.vinyl.inline:hover{border-color:var(--accent);background:var(--accent-soft)}
+.vinyl.inline .vy-art{width:92px;height:50px}
+.vinyl.inline .cup{display:block;position:absolute;left:0;bottom:0;width:44px;height:50px;z-index:1;overflow:visible}
+.vinyl.inline .disc{inset:auto 0 3px auto;width:44px;height:44px}
+.vinyl.inline .label{inset:14px}
+.vinyl.inline .ico{display:none}
+.vinyl.inline .vy-text{display:grid;gap:2px;line-height:1.35}
+.vinyl.inline .vy-t{font-size:15px;font-weight:700}
+.vinyl.inline .vy-s{font-size:13px;color:var(--muted)}
+.vinyl.inline.on .vy-s{color:var(--accent)}
+.vinyl .steam{fill:none;stroke:var(--muted);stroke-width:2;stroke-linecap:round;opacity:0}
+.vinyl.on .steam{opacity:.7}
+@media (prefers-reduced-motion:no-preference){
+  .vinyl.on .disc{animation:vinylspin 4s linear infinite}
+  .vinyl.on .steam{animation:steam 2.4s ease-in-out infinite}
+  .vinyl.on .steam.s2{animation-delay:.8s}
+}
 @keyframes vinylspin{to{transform:rotate(360deg)}}
-/* 首頁：唱片排在「前往辦公大樓」按鈕旁邊；其他畫面回到右上角 */
-@media (max-width:600px){.maptitle{padding-right:56px}}
-.vinyl.inline{position:relative;top:auto;right:auto;z-index:auto;align-self:center;flex:none;margin-left:4px}
+@keyframes steam{0%{opacity:0;transform:translateY(4px)}40%{opacity:.75}100%{opacity:0;transform:translateY(-6px)}}
 </style>
 
 </head>
@@ -4842,15 +4861,28 @@ if(hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
 
 <!-- 背景音樂：預設開啟、音量 30%、循環播放。瀏覽器若擋下自動播放，會在玩家第一次點擊或按鍵時開始播。 -->
 <audio id="bgm" src="workmusic.mp3" loop preload="auto"></audio>
-<button type="button" id="vinyl" class="vinyl on" aria-pressed="true" aria-label="背景音樂：開（按一下關閉）" title="背景音樂：開">
-  <span class="disc"><span class="label"></span></span><span class="ico" aria-hidden="true">🔊</span>
+<button type="button" id="vinyl" class="vinyl off" aria-pressed="false">
+  <span class="vy-art" aria-hidden="true">
+    <svg class="cup" viewBox="0 0 44 50">
+      <path class="steam" d="M15 14c-3-3 3-5 0-9"/><path class="steam s2" d="M23 14c-3-3 3-5 0-9"/>
+      <ellipse cx="20" cy="46" rx="18" ry="3.2" fill="#E2D3C6"/>
+      <path d="M34 25h2.5a5.5 5.5 0 0 1 0 11H33" fill="none" stroke="#24201F" stroke-width="2.4"/>
+      <path d="M5 18h30v14a11 11 0 0 1-11 11h-8A11 11 0 0 1 5 32Z" fill="#FFFBF7" stroke="#24201F" stroke-width="2.4" stroke-linejoin="round"/>
+      <path d="M7.2 21h25.6" stroke="#6B4226" stroke-width="3.4" stroke-linecap="round"/>
+      <path d="M11 30h18" stroke="#C9572F" stroke-width="2.6" stroke-linecap="round"/>
+    </svg>
+    <span class="disc"><span class="label"></span></span><span class="ico">🔇</span>
+  </span>
+  <span class="vy-text"><b class="vy-t">開始上班的儀式感</b><small class="vy-s">按這邊沖杯咖啡，播放上班音樂</small></span>
 </button>
 <script>
 (function(){
   var audio = document.getElementById('bgm');
   var btn = document.getElementById('vinyl');
   var ico = btn.querySelector('.ico');
+  var vyT = btn.querySelector('.vy-t'), vyS = btn.querySelector('.vy-s');
   var wantOn = true;            // 預設開
+  var playing = false;          // 實際上有沒有在出聲（畫面依這個顯示）
   audio.volume = 0.3;           // 音量 30%
 
   // 首頁有「前往辦公大樓」時，把唱片搬到它旁邊；離開首頁時搬回 body（固定在右上角）
@@ -4872,12 +4904,16 @@ if(hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
   new MutationObserver(place).observe(document.getElementById('root'), {childList:true, subtree:true});
 
   function render(){
-    btn.className = 'vinyl ' + (wantOn ? 'on' : 'off') + (inline ? ' inline' : '');
-    btn.setAttribute('aria-pressed', wantOn ? 'true' : 'false');
-    btn.setAttribute('aria-label', wantOn ? '背景音樂：開（按一下關閉）' : '背景音樂：關（按一下開啟）');
-    btn.title = wantOn ? '背景音樂：開' : '背景音樂：關';
-    ico.textContent = wantOn ? '🔊' : '🔇';
+    btn.className = 'vinyl ' + (playing ? 'on' : 'off') + (inline ? ' inline' : '');
+    btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    btn.title = playing ? '上班音樂播放中，按一下暫停' : '沖杯咖啡，播放上班音樂';
+    btn.setAttribute('aria-label', playing ? '上班音樂播放中，按一下暫停' : '開始上班的儀式感：沖杯咖啡，播放上班音樂');
+    ico.textContent = playing ? '🔊' : '🔇';
+    vyT.textContent = playing ? '咖啡沖好了，上班音樂播放中' : '開始上班的儀式感';
+    vyS.textContent = playing ? '再按一下可以暫停' : '按這邊沖杯咖啡，播放上班音樂';
   }
+  audio.addEventListener('playing', function(){ playing = true; render(); });
+  audio.addEventListener('pause', function(){ playing = false; render(); });
   function tryPlay(){
     if(!wantOn || !audio.paused) return;
     var p = audio.play();
@@ -4895,10 +4931,9 @@ if(hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
   });
 
   btn.addEventListener('click', function(){
-    if(wantOn && !started && !audio.error){ tryPlay(); return; }   // 顯示開但還沒播出來：這次點擊是讓它開始播
-    wantOn = !wantOn;
-    if(wantOn) tryPlay(); else audio.pause();
-    render();
+    // 依「實際有沒有在播」切換：沒在播（含被瀏覽器擋下）→ 播；在播 → 暫停
+    if(playing){ wantOn = false; audio.pause(); }
+    else { wantOn = true; tryPlay(); }
   });
   // 切到其他分頁時暫停，回來再繼續
   document.addEventListener('visibilitychange', function(){
